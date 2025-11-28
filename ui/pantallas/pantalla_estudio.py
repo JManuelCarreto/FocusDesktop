@@ -133,8 +133,20 @@ class PantallaEstudio(QWidget):
         self.two_thumbs_counter = 0
         self.pause_count = 0
 
+        #Voz
+        self.voice = VoiceAssistant()
 
     # --- Control de pantalla ---
+    def start_session(self):
+        self.session_running = True
+        self.overlay_label.setText("🎯 Sesión iniciada")
+        self.overlay_label.show()
+        self.overlay_label.raise_()
+        self.overlay_timer.start(1500)
+        self.gesture_timer.restart()
+        self.voice.speak_random("start")
+
+
     def showEvent(self, event):
         super().showEvent(event)
         self.time_left = 25 * 60
@@ -159,12 +171,6 @@ class PantallaEstudio(QWidget):
         if self.cap.isOpened():
             self.camera_timer.start(33)
         self.countdown_timer.start(1000)
-
-        current_item = self.task_list.currentItem()
-        if current_item:
-            text = current_item.text().strip()
-            if text[0].isdigit():
-                self.motivation_task(text)
 
     def hideEvent(self, event):
         if self.camera_timer.isActive():
@@ -337,6 +343,12 @@ class PantallaEstudio(QWidget):
             self.timer.start(1000)
             self.session_running = True
 
+        #Voz pausa y resumen
+        if self.pause_active:
+            self.voice.speak_random("pause")
+        else:
+            self.voice.speak_random("resume")
+
     def next_task(self):
         current = self.task_list.currentRow()
         if current < self.task_list.count() - 1:
@@ -398,6 +410,9 @@ class PantallaEstudio(QWidget):
         #Guardar nivel de concentración
         self.app.pause_count = self.pause_count
 
+        #Voz final
+        self.voice.speak_random("end")
+
         # Cambiar a pantalla de fin
         self.app.change_screen("end")
 
@@ -408,3 +423,52 @@ class PantallaEstudio(QWidget):
         x = (self.width() - w) // 2
         y = (self.height() - h) // 2
         self.overlay_label.setGeometry(x, y, w, h)
+
+import pyttsx3
+import random
+import threading
+
+class VoiceAssistant:
+    def __init__(self):
+        self.phrases = {
+            "start": [
+                "¡Muy bien!, empezar es lo más difícil.",
+                "Dar el primer paso es un gran logro ¡Tu puedes!",
+                "¡Hoy vas a lograr grandes avances!"
+            ],
+            "pause": [
+                "Descansa un poco, lo estás haciendo genial.",
+                "Un respiro te ayudará a seguir fuerte.",
+                "Tómate un momento, te lo mereces."
+            ],
+            "resume": [
+                "¡De vuelta al trabajo, sigue así!",
+                "¡Que bueno que volviste!",
+                "¡Vamos, cada minuto cuenta!"
+            ],
+            "end": [
+                "¡Excelente trabajo, lo hiciste muy bien!",
+                "¡Lo lograste, felicidades por tu esfuerzo!",
+                "¡Bien hecho! con esfuerzo todo es posible"
+            ]
+        }
+
+    def speak(self, text):
+        def run():
+            engine = pyttsx3.init()
+            voices = engine.getProperty('voices')
+            for v in voices:
+                if "Spanish" in v.name and "Mexico" in v.name:
+                    engine.setProperty('voice', v.id)
+                    break
+            engine.setProperty('rate', 170)
+            engine.setProperty('volume', 1.0)
+            engine.say(text)
+            engine.runAndWait()
+            engine.stop()
+        threading.Thread(target=run).start()
+
+    def speak_random(self, category):
+        if category in self.phrases:
+            phrase = random.choice(self.phrases[category])
+            self.speak(phrase)

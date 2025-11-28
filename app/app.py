@@ -42,6 +42,7 @@ class App(QMainWindow):
         if screen_name == "session":
             self.pause_count = 0
             self.tasks_completed = 0
+            self.session.start_session()
 
         if screen_name == "end":
             self.end = PantallaFin(self)
